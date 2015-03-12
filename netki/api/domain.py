@@ -23,6 +23,10 @@ def api_wallet_lookup(wallet_name, currency):
         log.warn('wallet_lookup fields invalid, returning failure')
         return create_json_response(success=False, message='Invalid Parameters')
 
+    # Handle transforms to lowercase and doge to dgc
+    currency = 'dgc' if currency.lower() == 'doge' else currency.lower()
+    wallet_name = wallet_name.lower()
+
     try:
 
         wnsresolver = WalletNameResolver(resolv_conf=config.general.resolv_conf_path, dnssec_root_key=config.general.dnssec_root_key_path)

@@ -10,6 +10,7 @@ from netki.api.domain import *
 
 from mock import patch, Mock
 
+
 class TestWalletLookup(TestCase):
     # This is the open wallet name lookup API
 
@@ -159,7 +160,6 @@ class TestWalletLookup(TestCase):
         self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), 'Wallet Name Does Not Contain Requested Currency')
         self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('data'), {})
 
-
     def test_wallet_lookup_exception(self):
 
         self.mockWalletNameResolver.return_value.resolve_wallet_name.side_effect = Exception('Raising Exception for testing')
@@ -171,6 +171,24 @@ class TestWalletLookup(TestCase):
         self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
         self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
         self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), 'General Wallet Lookup Failure')
+
+    def test_uppercase_currency_and_wallet_name_to_lowercase(self):
+
+        api_wallet_lookup('Wallet.FrankContreras.Me', 'BTC')
+
+        # Validate call to resolve has values in lowercase
+        call_args = self.mockWalletNameResolver.return_value.resolve_wallet_name.call_args_list[0][0]
+        self.assertEqual('wallet.frankcontreras.me', call_args[0])
+        self.assertEqual('btc', call_args[1])
+
+    def test_dogecoin_transform(self):
+
+        api_wallet_lookup('wallet.frankContreras.me', 'doge')
+
+        # Validate call to resolve has values in lowercase
+        call_args = self.mockWalletNameResolver.return_value.resolve_wallet_name.call_args_list[0][0]
+        self.assertEqual('wallet.frankcontreras.me', call_args[0])
+        self.assertEqual('dgc', call_args[1])
 
 if __name__ == "__main__":
     import unittest
