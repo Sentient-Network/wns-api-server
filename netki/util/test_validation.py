@@ -70,15 +70,3 @@ class TestInputValidation(TestCase):
 
         self.assertTrue(InputValidation.is_valid_wallet_address('kjh4kjh534lkj5h34lkj5h43kj35h'))
         self.assertFalse(InputValidation.is_valid_wallet_address('#@^*^&(&$%'))
-
-    def test_is_valid_currency(self):
-
-        self.assertFalse(InputValidation.is_valid_currency(None))
-        self.assertFalse(InputValidation.is_valid_currency(''))
-
-        self.assertTrue(InputValidation.is_valid_currency('btc'))
-        self.assertTrue(InputValidation.is_valid_currency('ltc'))
-        self.assertTrue(InputValidation.is_valid_currency('dgc'))
-
-        self.assertFalse(InputValidation.is_valid_currency('nmc'))
-        self.assertFalse(InputValidation.is_valid_currency('75x12'))

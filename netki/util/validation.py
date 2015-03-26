@@ -52,10 +52,3 @@ class InputValidation:
             return False
         return True
 
-    @staticmethod
-    def is_valid_currency(currency):
-        if not currency:
-            return False
-
-        return currency in ['btc', 'ltc', 'dgc']
-
