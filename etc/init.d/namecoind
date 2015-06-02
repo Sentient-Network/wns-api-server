@@ -9,7 +9,7 @@
 NAME="namecoind"
 PIDFILE="/var/run/$NAME.pid"
 APP="/usr/bin/$NAME"
-ARGS="-daemon -server -conf=/.namecoin/namecoin.conf -pid=$PIDFILE"
+ARGS="-daemon -server -conf=~/.namecoin/namecoin.conf -pid=$PIDFILE"
 
 start() {
         if [ -f $PIDFILE ]; then
