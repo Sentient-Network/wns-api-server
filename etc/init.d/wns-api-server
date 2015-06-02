@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+# /etc/rc.d/init.d/wns-api-server
+# chkconfig: 345 90 10
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+NAME="wns-api-server"
+PIDFILE="/var/run/$NAME.pid"
+
+export PYTHONPATH="/root/wns-api-server"
+PYTHON="/usr/bin/python"
+GUNICORN="/usr/bin/gunicorn"
+ARGS="netki.api_server:app --bind=0.0.0.0:5000 --workers=10 --timeout=60 --log-level=debug --access-logfile=/var/log/api_access.log --log-file=/var/log/api_server.log --forwarded-allow-ips=*"
+
+start() {
+        if [ -f $PIDFILE ]; then
+                PID=`cat $PIDFILE`
+                if [ ! -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+                        echo "$NAME already running"
+                        failure
+                        return 1
+                else
+                        echo "$NAME pid file exists but process is not running"
+                        failure
+                        return 1
+                fi
+        fi
+
+        cd $PYTHONPATH
+        $PYTHON $GUNICORN $ARGS &
+
+        if [ $? -eq 0 ]; then
+                echo $! > $PIDFILE
+                success
+        else
+                failure
+        fi
+}
+
+stop() {
+        PID=`cat $PIDFILE`
+        kill $PID
+
+        if [ $? -eq 0 ]; then
+                rm -f $PIDFILE
+                success
+        else
+                failure
+        fi
+}
+
+status() {
+        if [ -f $PIDFILE ]; then
+                PID=`cat $PIDFILE`
+
+                if [ ! -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+                        echo "$NAME is running"
+                else
+                        echo "$NAME is not running"
+                fi
+        else
+                echo "$NAME is not running"
+        fi
+}
+
+
+case "$1" in
+        start)
+                start
+        ;;
+        stop)
+                stop
+        ;;
+        status)
+                status
+        ;;
+        restart)
+                stop
+                sleep 5
+                start
+        ;;
+        *)
+                echo "Usage: <servicename> {start|stop|status|restart"
+                exit 1
+        ;;
+esac
