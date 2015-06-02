@@ -2,5 +2,5 @@ Flask==0.10.1
 Werkzeug==0.9.6
 anyjson==0.3.3
 attrdict==1.2.0
-wnsresolver>=0.0.1
-bcresolver>=0.0.1
+wnsresolver>=0.0.3
+bcresolver>=0.0.4
