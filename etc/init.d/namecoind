@@ -7,9 +7,9 @@
 . /etc/rc.d/init.d/functions
 
 NAME="namecoind"
-PIDFILE="/var/run/$NAME.pid"
+PIDFILE="/var/run/namecoin/$NAME.pid"
 APP="/usr/bin/$NAME"
-ARGS="-daemon -server -conf=/.namecoin/namecoin.conf -pid=$PIDFILE"
+ARGS="-daemon -server -conf=/home/namecoin/.namecoin/namecoin.conf -pid=$PIDFILE"
 
 start() {
         if [ -f $PIDFILE ]; then
@@ -25,7 +25,7 @@ start() {
                 fi
         fi
 
-        $APP $ARGS
+        daemon --user=namecoin $APP $ARGS
 
         if [ $? -eq 0 ];then
                 success
@@ -35,7 +35,7 @@ start() {
 }
 
 stop() {
-        $APP stop
+        daemon --user=namecoin $APP stop
 
         if [ $? -eq 0 ];then
                 success
