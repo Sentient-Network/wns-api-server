@@ -1,9 +1,11 @@
 FROM centos:6
 
+# NOTE: Double yum calls are due to a Docker bug referenced here (https://github.com/docker/docker/issues/10180)
+
 # Install namecoin
-RUN yum -y install wget
+RUN (yum -y install wget || yum -y install wget)
 RUN cd /etc/yum.repos.d/ && wget http://download.opensuse.org/repositories/home:p_conrad:coins/CentOS_CentOS-6/home:p_conrad:coins.repo
-RUN yum -y install namecoin
+RUN (yum -y install namecoin || yum -y install namecoin)
 
 # Configure namecoind
 RUN useradd namecoin
@@ -13,8 +15,8 @@ RUN su - namecoin && mkdir /home/namecoin/.namecoin && echo "rpcuser=namecoin_us
 RUN chown -R namecoin:namecoin /home/namecoin/.namecoin
 
 # Install unbound build deps
-RUN yum -y install tar openssl-devel python-devel expat-devel
-RUN yum -y groupinstall "Development tools"
+RUN (yum -y install tar openssl-devel python-devel expat-devel || yum -y install tar openssl-devel python-devel expat-devel)
+RUN (yum -y groupinstall "Development tools" || yum -y groupinstall "Development tools")
 
 # Download and build unbound
 RUN cd && mkdir unbound && cd unbound && curl -O http://www.unbound.net/downloads/unbound-1.4.22.tar.gz && tar -xvf unbound-1.4.22.tar.gz
