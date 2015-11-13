@@ -73,3 +73,63 @@ def api_wallet_lookup(wallet_name, currency):
         log.debug('Wallet Lookup for (%s, %s) returned an error: %s' % (wallet_name, currency, msg))
 
     return create_json_response(success=success_flag, message=msg, data=rdata)
+
+def walletname_currency_lookup(wallet_name):
+
+    log.info('Calling walletname_currency_lookup(%s)' % (wallet_name))
+
+    currencies = error = None
+
+    if not InputValidation.is_valid_field(wallet_name) or '.' not in wallet_name:
+        log.warn('wallet_lookup fields invalid, returning failure')
+        return create_json_response(success=False, message='Invalid Parameters')
+
+    # Handle transforms to lowercase and doge to dgc
+    wallet_name = wallet_name.lower()
+
+    try:
+
+        wnsresolver = WalletNameResolver(resolv_conf=config.general.resolv_conf_path, dnssec_root_key=config.general.dnssec_root_key_path)
+
+        if config.namecoin.enabled:
+            wnsresolver.set_namecoin_options(
+                host=config.namecoin.host,
+                user=config.namecoin.user,
+                password=config.namecoin.password,
+                port=config.namecoin.port,
+                tmpdir=config.namecoin.resolver_temp_path
+            )
+
+        currencies = wnsresolver.resolve_available_currencies(wallet_name)
+
+    except WalletNameCurrencyUnavailableError:
+        error = 'Requested Currency Unavailable'
+    except (WalletNameLookupError, WalletNameUnavailableError):
+        error = 'Wallet Name Does Not Exist'
+    except WalletNameLookupInsecureError:
+        error = 'Wallet Name Lookup is Insecure'
+    except WalletNameNamecoinUnavailable:
+        error = 'Namecoin-based Wallet Name Lookup Unavailable'
+    except Exception as e:
+        log.error('wallet_lookup(%s) failed: %s' % (wallet_name, str(e)))
+        return create_json_response(success=False, message='General Wallet Lookup Failure')
+
+    success_flag=True
+    msg = ''
+    rdata = {}
+    if currencies:
+        rdata['wallet_name'] = wallet_name
+        rdata['available_currencies'] = currencies
+        log.debug('Available Currency Lookup for (%s) returned successfully with currencies: %s' % (wallet_name, ', '.join(currencies)))
+
+    elif error:
+        success_flag=False
+        msg = str(error)
+        log.debug('Available Currency Lookup for (%s) returned an error: %s' % (wallet_name, msg))
+    else:
+        success_flag=False
+        msg = 'LOOKUP_FAILURE'
+        rdata['wallet_name'] = wallet_name
+        log.debug('Available Currency Lookup for (%s) returned a lookup failure' % (wallet_name))
+
+    return create_json_response(success=success_flag, message=msg, data=rdata)
