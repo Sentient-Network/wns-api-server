@@ -97,19 +97,27 @@ def walletname_currency_lookup(wallet_name):
     wallet_name = wallet_name.lower()
 
     try:
+        # If you do not have access to Namecoin node, allow for .bit lookups via API
+        if wallet_name.endswith('.bit') and config.namecoin.enabled and config.namecoin.use_api:
+            response = requests.get('%s/%s/available_currencies' % (config.general.lookup_api_url, wallet_name))
+            if response.json().get('success'):
+                currencies = response.json().get('available_currencies')
+            else:
+                raise WalletNameLookupError
 
-        wnsresolver = WalletNameResolver(resolv_conf=config.general.resolv_conf_path, dnssec_root_key=config.general.dnssec_root_key_path)
+        else:
+            wnsresolver = WalletNameResolver(resolv_conf=config.general.resolv_conf_path, dnssec_root_key=config.general.dnssec_root_key_path)
 
-        if config.namecoin.enabled:
-            wnsresolver.set_namecoin_options(
-                host=config.namecoin.host,
-                user=config.namecoin.user,
-                password=config.namecoin.password,
-                port=config.namecoin.port,
-                tmpdir=config.namecoin.resolver_temp_path
-            )
+            if config.namecoin.enabled:
+                wnsresolver.set_namecoin_options(
+                    host=config.namecoin.host,
+                    user=config.namecoin.user,
+                    password=config.namecoin.password,
+                    port=config.namecoin.port,
+                    tmpdir=config.namecoin.resolver_temp_path
+                )
 
-        currencies = wnsresolver.resolve_available_currencies(wallet_name)
+            currencies = wnsresolver.resolve_available_currencies(wallet_name)
 
     except WalletNameCurrencyUnavailableError:
         error = 'Requested Currency Unavailable'
