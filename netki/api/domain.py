@@ -29,18 +29,27 @@ def api_wallet_lookup(wallet_name, currency):
 
     try:
 
-        wnsresolver = WalletNameResolver(resolv_conf=config.general.resolv_conf_path, dnssec_root_key=config.general.dnssec_root_key_path)
+        # If you do not have access to Namecoin node, allow for .bit lookups via API
+        if wallet_name.endswith('.bit') and config.namecoin.enabled and config.namecoin.use_api:
+            response = requests.get('%s/%s/%s' % (config.general.lookup_api_url, wallet_name, currency))
+            if response.json().get('success'):
+                addr = response.json().get('wallet_address')
+            else:
+                raise WalletNameLookupError
 
-        if config.namecoin.enabled:
-            wnsresolver.set_namecoin_options(
-                host=config.namecoin.host,
-                user=config.namecoin.user,
-                password=config.namecoin.password,
-                port=config.namecoin.port,
-                tmpdir=config.namecoin.resolver_temp_path
-            )
+        else:
+            wnsresolver = WalletNameResolver(resolv_conf=config.general.resolv_conf_path, dnssec_root_key=config.general.dnssec_root_key_path)
 
-        addr = wnsresolver.resolve_wallet_name(wallet_name, currency)
+            if config.namecoin.enabled:
+                wnsresolver.set_namecoin_options(
+                    host=config.namecoin.host,
+                    user=config.namecoin.user,
+                    password=config.namecoin.password,
+                    port=config.namecoin.port,
+                    tmpdir=config.namecoin.resolver_temp_path
+                )
+
+            addr = wnsresolver.resolve_wallet_name(wallet_name, currency)
 
     except (WalletNameLookupError, WalletNameUnavailableError):
         error = 'Wallet Name does not exist'

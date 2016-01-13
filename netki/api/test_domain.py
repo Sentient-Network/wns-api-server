@@ -18,12 +18,15 @@ class TestWalletLookup(TestCase):
         self.patcher1 = patch("netki.api.domain.InputValidation")
         self.patcher2 = patch("netki.api.domain.create_json_response")
         self.patcher3 = patch("netki.api.domain.WalletNameResolver")
+        self.patcher4 = patch("netki.api.domain.requests")
 
         self.mockInputValidation = self.patcher1.start()
         self.mockCreateJSONResponse = self.patcher2.start()
         self.mockWalletNameResolver = self.patcher3.start()
+        self.mockRequests = self.patcher4.start()
 
         config.namecoin.enabled = True
+        self.mockRequests.get.return_value.json.return_value = {'success': True, 'wallet_address': '1walletaddy'}
 
     def tearDown(self):
 
@@ -76,6 +79,7 @@ class TestWalletLookup(TestCase):
         api_wallet_lookup('wallet.frankcontreras.me', 'btc')
 
         self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 0)
         self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 1)
         self.assertEqual(self.mockWalletNameResolver.return_value.set_namecoin_options.call_count, 1)
         self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
@@ -96,6 +100,7 @@ class TestWalletLookup(TestCase):
         api_wallet_lookup('wallet.frankcontreras.me', 'btc')
 
         self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 0)
         self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 1)
         self.assertEqual(self.mockWalletNameResolver.return_value.set_namecoin_options.call_count, 0)
         self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
@@ -108,6 +113,48 @@ class TestWalletLookup(TestCase):
         self.assertEqual(call_dict.get('currency'), 'btc')
         self.assertEqual(call_dict.get('wallet_address'), '1djskfaklasdjflkasdf')
 
+    def test_namecoin_use_api_returned_success(self):
+
+        config.namecoin.use_api = True
+        config.general.lookup_api_url = 'http://domain.com/lookup'
+        self.mockWalletNameResolver.return_value.resolve_wallet_name.return_value = '1djskfaklasdjflkasdf'
+
+        api_wallet_lookup('wallet.frankcontreras.bit', 'btc')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 1)
+        self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 0)
+        self.assertEqual(self.mockWalletNameResolver.return_value.set_namecoin_options.call_count, 0)
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertTrue(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), '')
+
+        # Returned Data Validation
+        call_dict = self.get_json_call()
+        self.assertEqual(call_dict.get('wallet_name'), 'wallet.frankcontreras.bit')
+        self.assertEqual(call_dict.get('currency'), 'btc')
+        self.assertEqual(call_dict.get('wallet_address'), '1walletaddy')
+
+    def test_namecoin_use_api_returned_failure(self):
+
+        config.namecoin.use_api = True
+        config.general.lookup_api_url = 'http://domain.com/lookup'
+        self.mockWalletNameResolver.return_value.resolve_wallet_name.return_value = '1djskfaklasdjflkasdf'
+        self.mockRequests.get.return_value.json.return_value['success'] = False
+
+        api_wallet_lookup('wallet.frankcontreras.bit', 'btc')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 1)
+        self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 0)
+        self.assertEqual(self.mockWalletNameResolver.return_value.set_namecoin_options.call_count, 0)
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+
+        # Returned Data Validation
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), 'Wallet Name does not exist')
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('data'), {})
+
     def test_wallet_lookup_returned_insecure_error(self):
         self.mockInputValidation.is_valid_field.return_value = True
         self.mockWalletNameResolver.return_value.resolve_wallet_name.side_effect = WalletNameLookupInsecureError()
@@ -115,6 +162,7 @@ class TestWalletLookup(TestCase):
         api_wallet_lookup('wallet.frankcontreras.me', 'btc')
 
         self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 0)
         self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 1)
         self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
         self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
@@ -128,6 +176,7 @@ class TestWalletLookup(TestCase):
         api_wallet_lookup('wallet.frankcontreras.me', 'btc')
 
         self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 0)
         self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 1)
         self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
         self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
@@ -141,6 +190,7 @@ class TestWalletLookup(TestCase):
         api_wallet_lookup('wallet.frankcontreras.me', 'btc')
 
         self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 0)
         self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 1)
         self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
         self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
@@ -154,6 +204,7 @@ class TestWalletLookup(TestCase):
         api_wallet_lookup('wallet.frankcontreras.me', 'btc')
 
         self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 0)
         self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 1)
         self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
         self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
@@ -167,6 +218,7 @@ class TestWalletLookup(TestCase):
         api_wallet_lookup('wallet.frankcontreras.me', 'btc')
 
         self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 2)
+        self.assertEqual(self.mockRequests.get.call_count, 0)
         self.assertEqual(self.mockWalletNameResolver.return_value.resolve_wallet_name.call_count, 1)
         self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
         self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
