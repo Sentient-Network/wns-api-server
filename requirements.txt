@@ -1,6 +1,15 @@
 Flask==0.10.1
+Jinja2==2.7.3
+MarkupSafe==0.23
 Werkzeug==0.9.6
 anyjson==0.3.3
 attrdict==1.2.0
-wnsresolver>=0.0.3
-bcresolver>=0.0.4
+bcresolver==0.0.4
+dnspython==1.12.0
+gunicorn==19.1.0
+iptools==0.6.1
+itsdangerous==0.24
+mock==1.0.1
+requests==2.5.1
+wnsresolver==0.0.7
+wsgiref==0.1.2

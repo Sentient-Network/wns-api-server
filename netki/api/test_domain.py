@@ -242,6 +242,171 @@ class TestWalletLookup(TestCase):
         self.assertEqual('wallet.frankcontreras.me', call_args[0])
         self.assertEqual('dgc', call_args[1])
 
+class TestWalletnameCurrencyLookup(TestCase):
+
+    def setUp(self):
+        self.patcher1 = patch("netki.api.domain.InputValidation")
+        self.patcher2 = patch("netki.api.domain.create_json_response")
+        self.patcher4 = patch("netki.api.domain.WalletNameResolver")
+
+        self.mockInputValidation = self.patcher1.start()
+        self.mockCreateJSONResponse = self.patcher2.start()
+        self.mockWalletNameResolver = self.patcher4.start()
+
+        self.mockWalletNameResolver.return_value.resolve_available_currencies.return_value = ['btc','ltc']
+
+    def tearDown(self):
+        self.patcher1.stop()
+        self.patcher2.stop()
+        self.patcher4.stop()
+
+    def get_json_call(self):
+        # Utility function to get JSON call_args_list cleaning up assertions in below tests
+        return self.mockCreateJSONResponse.call_args_list[0][1].get('data')
+
+    def test_invalid_wallet_name_field(self):
+        # Used to simulate failure in validation for each iteration [iteration 1, iteration 2, etc.]
+        self.mockInputValidation.is_valid_field.side_effect = [False]
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), 'Invalid Parameters')
+        self.assertFalse(self.mockWalletNameResolver.called)
+
+    def test_invalid_wallet_name_field_no_dot(self):
+
+        walletname_currency_lookup('walletfrankcontrerasme')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), 'Invalid Parameters')
+        self.assertFalse(self.mockWalletNameResolver.called)
+
+    def test_wallet_address_returned_success(self):
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertTrue(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), '')
+        self.assertEqual(1, self.mockWalletNameResolver.return_value.resolve_available_currencies.call_count)
+        self.assertEqual('wallet.frankcontreras.me', self.mockWalletNameResolver.return_value.resolve_available_currencies.call_args[0][0])
+
+        # Returned Data Validation
+        call_dict = self.get_json_call()
+        self.assertEqual(call_dict.get('wallet_name'), 'wallet.frankcontreras.me')
+        self.assertEqual(call_dict.get('available_currencies'), ['btc','ltc'])
+
+    def test_wallet_lookup_returned_error(self):
+
+        self.mockInputValidation.is_valid_field.return_value = True
+
+        self.mockWalletNameResolver.return_value.resolve_available_currencies.side_effect = WalletNameUnavailableError()
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(1, self.mockWalletNameResolver.return_value.resolve_available_currencies.call_count)
+        self.assertEqual('wallet.frankcontreras.me', self.mockWalletNameResolver.return_value.resolve_available_currencies.call_args[0][0])
+
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'),'Wallet Name Does Not Exist')
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('data'), {})
+
+    def test_wallet_lookup_returned_insecure(self):
+
+        self.mockInputValidation.is_valid_field.return_value = True
+
+        self.mockWalletNameResolver.return_value.resolve_available_currencies.side_effect = WalletNameLookupInsecureError()
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(1, self.mockWalletNameResolver.return_value.resolve_available_currencies.call_count)
+        self.assertEqual('wallet.frankcontreras.me', self.mockWalletNameResolver.return_value.resolve_available_currencies.call_args[0][0])
+
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'),'Wallet Name Lookup is Insecure')
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('data'), {})
+
+    def test_wallet_lookup_returned_currency_unavailable(self):
+
+        self.mockInputValidation.is_valid_field.return_value = True
+
+        self.mockWalletNameResolver.return_value.resolve_available_currencies.side_effect = WalletNameCurrencyUnavailableError()
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(1, self.mockWalletNameResolver.return_value.resolve_available_currencies.call_count)
+        self.assertEqual('wallet.frankcontreras.me', self.mockWalletNameResolver.return_value.resolve_available_currencies.call_args[0][0])
+
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'),'Requested Currency Unavailable')
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('data'), {})
+
+    def test_wallet_lookup_returned_currency_namecoin_unavailable(self):
+
+        self.mockInputValidation.is_valid_field.return_value = True
+
+        self.mockWalletNameResolver.return_value.resolve_available_currencies.side_effect = WalletNameNamecoinUnavailable()
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(1, self.mockWalletNameResolver.return_value.resolve_available_currencies.call_count)
+        self.assertEqual('wallet.frankcontreras.me', self.mockWalletNameResolver.return_value.resolve_available_currencies.call_args[0][0])
+
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'),'Namecoin-based Wallet Name Lookup Unavailable')
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('data'), {})
+
+
+    def test_wallet_lookup_failed(self):
+        self.mockInputValidation.is_valid_field.return_value = True
+        self.mockWalletNameResolver.return_value.resolve_available_currencies.return_value = None
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(1, self.mockWalletNameResolver.return_value.resolve_available_currencies.call_count)
+        self.assertEqual('wallet.frankcontreras.me', self.mockWalletNameResolver.return_value.resolve_available_currencies.call_args[0][0])
+
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), 'LOOKUP_FAILURE')
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('data').get('wallet_name'), 'wallet.frankcontreras.me')
+
+    def test_wallet_lookup_exception(self):
+        self.mockWalletNameResolver.return_value.resolve_available_currencies.side_effect = Exception()
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        self.assertEqual(self.mockInputValidation.is_valid_field.call_count, 1)
+        self.assertEqual(1, self.mockWalletNameResolver.return_value.resolve_available_currencies.call_count)
+        self.assertEqual('wallet.frankcontreras.me', self.mockWalletNameResolver.return_value.resolve_available_currencies.call_args[0][0])
+
+        self.assertEqual(self.mockCreateJSONResponse.call_count, 1)
+        self.assertFalse(self.mockCreateJSONResponse.call_args_list[0][1].get('success'))
+        self.assertEqual(self.mockCreateJSONResponse.call_args_list[0][1].get('message'), 'General Wallet Lookup Failure')
+
+    def test_uppercase_currency_and_wallet_name_to_lowercase(self):
+
+        walletname_currency_lookup('wallet.frankcontreras.me')
+
+        # Validate call to resolve has values in lowercase
+        self.assertEqual('wallet.frankcontreras.me', self.mockWalletNameResolver.return_value.resolve_available_currencies.call_args[0][0])
+
+
 if __name__ == "__main__":
     import unittest
     unittest.main()

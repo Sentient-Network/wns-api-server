@@ -29,5 +29,9 @@ def index():
 def wallet_lookup(wallet_name, currency):
     return netki.api.domain.api_wallet_lookup(wallet_name, currency)
 
+@app.route('/api/wallet_lookup/<wallet_name>/available_currencies', methods=['GET'])
+def currency_lookup(wallet_name):
+    return netki.api.domain.walletname_currency_lookup(wallet_name)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
