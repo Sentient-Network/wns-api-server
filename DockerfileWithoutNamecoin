@@ -20,7 +20,7 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py && python get-pip.py
 RUN useradd netki
 RUN su - netki -c "git clone https://github.com/netkicorp/wns-api-server.git && echo 'export PYTHONPATH=/home/netki/wns-api-server' >>~/.bashrc"
 RUN pip install -r /home/netki/wns-api-server/requirements.txt && pip install gunicorn
-RUN cd etc && sed 's/use_api=false/use_api=true/' app.prod.config > new.app.prod.config; mv new.app.prod.config app.prod.config;
+RUN cd /home/netki/wns-api-server/etc && sed 's/use_api=false/use_api=true/' app.prod.config > new.app.prod.config; mv new.app.prod.config app.prod.config;
 
 # Set was-api-server to run
 RUN mkdir /var/run/wns-api-server
