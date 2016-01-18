@@ -19,13 +19,12 @@ RUN unbound-anchor || true
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && python get-pip.py
 RUN useradd netki
 RUN su - netki -c "git clone https://github.com/netkicorp/wns-api-server.git && echo 'export PYTHONPATH=/home/netki/wns-api-server' >>~/.bashrc"
-RUN pip install -r /home/netki/wns-api-server/requirements.txt && pip install gunicorn
+RUN pip install -r /home/netki/wns-api-server/requirements.txt && pip install gunicorn && pip install supervisor
 RUN cd /home/netki/wns-api-server/etc && sed 's/use_api=false/use_api=true/' app.prod.config > new.app.prod.config; mv new.app.prod.config app.prod.config;
 
-# Set was-api-server to run
-RUN mkdir /var/run/wns-api-server
+# Set wns-api-server to run
 RUN mkdir /var/log/netki
-RUN chown netki:netki /var/run/wns-api-server /var/log/netki
-RUN cp /home/netki/wns-api-server/etc/init.d/wns-api-server /etc/init.d/wns-api-server
-RUN chkconfig --add wns-api-server
-RUN echo 'service wns-api-server start' >>~/.bashrc
+RUN chown netki:netki /var/log/netki
+RUN cp /home/netki/wns-api-server/etc/supervisord.conf /etc/supervisord.conf
+
+CMD /usr/bin/supervisord -c /etc/supervisord.conf
