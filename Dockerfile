@@ -24,7 +24,7 @@ RUN cd /root/unbound/unbound-1.4.22 && ./configure --with-pyunbound --with-ssl &
 RUN useradd unbound
 
 # Setup unbound trust anchor for ICANN DNSSEC resolution
-RUN unbound-anchor || true
+RUN mkdir /etc/unbound && unbound-anchor || true && mkdir -p /usr/local/etc/unbound/ && cp /etc/unbound/root.key /usr/local/etc/unbound/
 
 # Download and prepare Netki wns-api-server
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && python get-pip.py

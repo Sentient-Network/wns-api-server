@@ -61,6 +61,12 @@ Edit etc/app.prod.config (default) config file to setup your Namecoin node infor
 
 To startup the server without a WSGI host, run *python api_server.py* and the server will be started listening on port 5000 by default.
 
+# Docker Container
+
+The most complete Dockerfile here is DockerfileWithoutNamecoinUbuntu. This dockerfile allows for ICANN domains Wallet Name resolution, but not Namecoin (.bit) name resolution. In order to use this correctly, 
+you need to supply build-args **SSL_CERT** and **SSL_KEYFILE**. Both of these must be files that are dropped into the **etc/ssl/** directory and are **ADD**'ed into the Docker container during build. 
+The container exposes ports **80** and **443**, with port **80** performing an immediate _redirect_ to the HTTPS URL.
+
 # Use
 
 The server responds to API requests in the following format:

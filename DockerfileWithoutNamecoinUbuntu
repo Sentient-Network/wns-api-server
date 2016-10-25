@@ -1,0 +1,57 @@
+# NOTE: This Dockerfile will not install a Namecoin node but will instead use the default configured API server in
+# app.prod.config. If you do not want to resolve any .bit addresses, disable Namecoin in app.prod.config
+
+FROM ubuntu:14.04
+MAINTAINER Netki Opensource <opensource@netki.com>
+ARG SSL_CERT
+ARG SSL_KEYFILE
+
+# Install unbound build deps
+RUN apt-get update && apt-get install -y \
+    git \
+    locales \
+    python \
+    python-dev \
+    python-pip \
+    libxml2 \
+    libxslt1.1 \
+    nginx \
+    openssl \
+    libssl-dev \
+    libexpat1 \
+    libexpat1-dev \
+    python-unbound \
+    unbound-anchor
+
+# Download and build unbound
+#RUN cd && mkdir unbound && cd unbound && curl -O http://www.unbound.net/downloads/unbound-1.4.22.tar.gz && tar -xvf unbound-1.4.22.tar.gz
+#RUN cd /root/unbound/unbound-1.4.22 && ./configure --with-pyunbound --with-ssl && make && make install
+RUN useradd unbound
+
+# Setup unbound trust anchor for ICANN DNSSEC resolution
+RUN mkdir /etc/unbound && unbound-anchor || true && mkdir -p /usr/local/etc/unbound/ && cp /etc/unbound/root.key /usr/local/etc/unbound/
+
+# Download and prepare Netki wns-api-server
+#RUN curl -O https://bootstrap.pypa.io/get-pip.py && python get-pip.py
+RUN useradd -ms /bin/bash netki
+RUN su netki -c "cd && git clone https://github.com/netkicorp/wns-api-server.git"
+RUN pip install -r /home/netki/wns-api-server/requirements.txt && pip install gunicorn supervisor
+RUN cd /home/netki/wns-api-server/etc && sed 's/use_api=false/use_api=true/' app.prod.config > new.app.prod.config && mv new.app.prod.config app.prod.config
+
+# Set wns-api-server to run
+RUN mkdir /var/log/netki && mkdir -p /etc/ssl && chown netki:netki /var/log/netki
+
+# file management, everything after an ADD is uncached, so we do it as late as possible in the process.
+ADD ./etc/supervisord.conf /etc/supervisord.conf
+ADD ./etc/nginx.conf /etc/nginx/nginx.conf
+ADD ./etc/ssl/${SSL_CERT} /etc/ssl/wns.crt
+ADD ./etc/ssl/${SSL_KEYFILE} /etc/ssl/wns.key
+RUN chmod 400 /etc/ssl/wns.crt
+RUN chmod 400 /etc/ssl/wns.key
+
+RUN service nginx stop
+
+EXPOSE 80 443
+
+# start supervisor to run our wsgi server
+ENTRYPOINT ["supervisord", "-c", "/etc/supervisord.conf", "-n"]
